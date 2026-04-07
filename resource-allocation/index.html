@@ -1,0 +1,1824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Resource Allocation — Namaa Consulting</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    /* ══════════════════════════════════════════
+       TOKENS
+    ══════════════════════════════════════════ */
+    :root {
+      --bg:           #0d1117;
+      --surface:      #161b22;
+      --surface2:     #1c2128;
+      --surface3:     #21262d;
+      --border:       #30363d;
+      --border-soft:  #21262d;
+
+      --green:        #1a7f4b;
+      --green-dim:    #0d3d24;
+      --green-bright: #2ea866;
+      --green-glow:   rgba(46,168,102,.15);
+
+      --red:          #da3633;
+      --red-dim:      #3d1a1a;
+      --red-bright:   #f47067;
+
+      --yellow:       #d29922;
+      --yellow-dim:   #3d2e0a;
+      --yellow-bright:#e3b341;
+
+      --text:         #e6edf3;
+      --text-sub:     #b1bac4;
+      --muted:        #7d8590;
+      --accent:       #58a6ff;
+
+      --font-sans: 'IBM Plex Sans', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+
+      --col-name-w: 190px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ══════════════════════════════════════════
+       STICKY HEADER BAND
+    ══════════════════════════════════════════ */
+    .top-band {
+      flex-shrink: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px 12px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .brand h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -.4px;
+      color: var(--text);
+    }
+    .brand p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .period-tabs { display: flex; gap: 4px; }
+    .tab {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tab:hover { color: var(--text); background: var(--surface3); }
+    .tab.active {
+      background: var(--green-dim);
+      color: var(--green-bright);
+      border-color: var(--green);
+    }
+
+    /* ══════════════════════════════════════════
+       WORKDAY HOURS SELECTOR
+    ══════════════════════════════════════════ */
+    .workday-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 4px 10px;
+    }
+    .workday-wrap label {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .workday-tabs { display: flex; gap: 3px; }
+    .workday-tab {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .workday-tab:hover { color: var(--text); background: var(--surface3); }
+    .workday-tab.active {
+      background: rgba(88,166,255,.12);
+      color: var(--accent);
+      border-color: rgba(88,166,255,.4);
+    }
+
+    .threshold-wrap {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 5px 11px;
+    }
+    .threshold-wrap label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .threshold-wrap input[type=number] {
+      width: 50px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-align: center;
+      padding: 3px 5px;
+    }
+    .threshold-wrap input:focus { outline: 1px solid var(--accent); }
+    .threshold-wrap .pct { font-size: 11px; color: var(--muted); }
+
+    .btn-save {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 5px;
+      border: none;
+      background: var(--green);
+      color: #fff;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-save:hover { background: var(--green-bright); }
+    .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-icon {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      padding: 5px 11px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-sub);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background .15s;
+    }
+    .btn-icon:hover { background: var(--surface3); }
+
+    .btn-leaders {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      padding: 5px 11px;
+      border-radius: 6px;
+      border: 1px solid rgba(88,166,255,.4);
+      background: rgba(88,166,255,.08);
+      color: var(--accent);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background .15s;
+    }
+    .btn-leaders:hover { background: rgba(88,166,255,.15); }
+
+    /* Period range badge */
+    .period-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 3px 8px;
+      white-space: nowrap;
+    }
+
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Dropdown */
+    .dd { position: relative; }
+    .dd-btn {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 6px 11px;
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color .15s;
+      min-width: 148px;
+      white-space: nowrap;
+    }
+    .dd-btn:hover, .dd-btn.open { border-color: var(--green-bright); }
+    .dd-btn .caret { font-size: 8px; color: var(--muted); transition: transform .18s; }
+    .dd-btn.open .caret { transform: rotate(180deg); }
+
+    .dd-panel {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 240px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      box-shadow: 0 10px 32px rgba(0,0,0,.55);
+      z-index: 500;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .dd-panel.open { display: flex; }
+
+    .dd-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px 8px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .dd-head-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+    .dd-cross-badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: rgba(88,166,255,.15);
+      color: var(--accent);
+      border: 1px solid rgba(88,166,255,.3);
+      display: none;
+    }
+    .dd-cross-badge.visible { display: inline-block; }
+
+    .btn-sel-all {
+      font-family: var(--font-sans);
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+    }
+    .btn-sel-all:hover { text-decoration: underline; }
+
+    .dd-search {
+      margin: 7px 8px 4px;
+      padding: 5px 9px;
+      background: var(--bg);
+      border: 1px solid var(--border-soft);
+      border-radius: 5px;
+      color: var(--text);
+      font-size: 12px;
+      font-family: var(--font-sans);
+    }
+    .dd-search:focus { outline: 1px solid var(--accent); }
+
+    .dd-list {
+      max-height: 210px;
+      overflow-y: auto;
+      padding: 4px 0 6px;
+    }
+    .dd-list::-webkit-scrollbar { width: 3px; }
+    .dd-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .dd-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background .1s;
+    }
+    .dd-item:hover { background: rgba(255,255,255,.04); }
+    .dd-item.dimmed { opacity: .38; }
+    .dd-item input[type=checkbox] {
+      accent-color: var(--green-bright);
+      width: 13px; height: 13px;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .dd-item label { cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .dd-empty { padding: 12px; font-size: 12px; color: var(--muted); text-align: center; }
+
+    .btn-clear {
+      font-family: var(--font-sans);
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 5px 9px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .btn-clear:hover { color: var(--text); border-color: var(--text); }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      border-radius: 20px; padding: 2px 8px 2px 10px;
+      font-size: 11px; max-width: 170px;
+    }
+    .chip.chip-user   { background: var(--green-dim); border: 1px solid var(--green); color: var(--green-bright); }
+    .chip.chip-project { background: rgba(88,166,255,.12); border: 1px solid rgba(88,166,255,.4); color: var(--accent); }
+    .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chip-x { background: none; border: none; cursor: pointer; font-size: 14px; line-height: 1; opacity: .7; padding: 0; flex-shrink: 0; }
+    .chip.chip-user .chip-x    { color: var(--green-bright); }
+    .chip.chip-project .chip-x { color: var(--accent); }
+    .chip-x:hover { opacity: 1; }
+
+    /* ══════════════════════════════════════════
+       KPI ROW
+    ══════════════════════════════════════════ */
+    .kpi-row {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 16px 24px 0;
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+    .kpi-label { font-size: 10px; color: var(--muted); font-weight: 500; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+    .kpi-val { font-family: var(--font-mono); font-size: 26px; font-weight: 700; line-height: 1; }
+    .kpi-val.neutral { color: var(--text); }
+    .kpi-val.green   { color: var(--green-bright); }
+    .kpi-val.red     { color: var(--red-bright); }
+
+    /* ══════════════════════════════════════════
+       TABLE CONTAINER
+    ══════════════════════════════════════════ */
+    .table-outer {
+      flex: 1;
+      min-height: 0;
+      padding: 16px 24px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #table-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    #table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    #table-scroll::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+    #table-scroll::-webkit-scrollbar-track { background: transparent; }
+
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: max-content;
+      min-width: 100%;
+      font-size: 12.5px;
+    }
+
+    thead th {
+      position: sticky; top: 0; z-index: 30;
+      background: var(--surface);
+      padding: 10px 12px;
+      font-size: 10px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .6px;
+      white-space: nowrap; text-align: center;
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 var(--border), 0 3px 8px rgba(0,0,0,.35);
+    }
+    thead th:first-child { text-align: left; width: var(--col-name-w); min-width: var(--col-name-w); }
+    thead th:last-child { min-width: 80px; }
+    thead th.th-corner { position: sticky; top: 0; left: 0; z-index: 40; background: var(--surface); }
+
+    tbody tr:nth-child(even) td { background: rgba(255,255,255,.015); }
+    tbody tr:hover td { background: rgba(88,166,255,.04) !important; }
+
+    td {
+      padding: 9px 12px; text-align: center; vertical-align: middle;
+      border-bottom: 1px solid var(--border-soft); white-space: nowrap;
+    }
+    td:first-child { text-align: left; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    td.td-name, thead th.th-corner {
+      position: sticky; left: 0; z-index: 20; background: var(--surface);
+    }
+    tbody tr:nth-child(even) td.td-name { background: rgba(255,255,255,.015); }
+    tbody tr:hover td.td-name { background: rgba(88,166,255,.04) !important; }
+    td.td-name::after, thead th.th-corner::after {
+      content: ''; position: absolute; top: 0; right: -8px; bottom: 0; width: 8px;
+      background: linear-gradient(to right, rgba(0,0,0,.18), transparent);
+      pointer-events: none;
+    }
+
+    .member-name { font-weight: 600; font-size: 13px; color: var(--text); }
+
+    /* Pill with hours sub-label */
+    .pill-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 52px; padding: 3px 8px; border-radius: 5px;
+      font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .2px;
+    }
+    .pill-green  { background: var(--green-dim);  color: var(--green-bright); }
+    .pill-yellow { background: var(--yellow-dim); color: var(--yellow-bright); }
+    .pill-red    { background: var(--red-dim);    color: var(--red-bright); }
+
+    .pill-hours {
+      font-family: var(--font-mono);
+      font-size: 9.5px;
+      color: var(--muted);
+      letter-spacing: 0;
+    }
+
+    .dash { color: var(--border); font-size: 16px; }
+
+    /* Total column */
+    .total-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .total-pct {
+      font-family: var(--font-mono); font-weight: 700; font-size: 13px;
+    }
+    .total-hrs {
+      font-family: var(--font-mono); font-size: 9.5px; color: var(--muted);
+    }
+    .total-green  { color: var(--green-bright); }
+    .total-yellow { color: var(--yellow-bright); }
+    .total-red    { color: var(--red-bright); }
+
+    .state-box {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 160px; gap: 12px;
+      color: var(--muted); font-size: 13px;
+    }
+    .spinner {
+      width: 22px; height: 22px;
+      border: 3px solid var(--border); border-top-color: var(--green-bright);
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .err { color: var(--red-bright); font-size: 12px; text-align: center; }
+
+    .meta-row {
+      flex-shrink: 0; display: flex; justify-content: space-between;
+      align-items: center;
+      padding: 5px 24px 6px;
+    }
+    .last-upd { font-size: 11px; color: var(--muted); }
+    .avail-info { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+    /* ══════════════════════════════════════════
+       MODAL OVERLAY
+    ══════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      z-index: 900;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 720px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,.7);
+    }
+
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 22px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .modal-header h2 { font-size: 15px; font-weight: 700; color: var(--text); }
+    .modal-header p  { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    .modal-close {
+      background: none; border: none; color: var(--muted);
+      font-size: 20px; cursor: pointer; padding: 0 4px;
+      line-height: 1; transition: color .15s;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body {
+      flex: 1; overflow-y: auto; padding: 20px 22px;
+    }
+    .modal-body::-webkit-scrollbar { width: 4px; }
+    .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .modal-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 22px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .leader-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+
+    .leader-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .leader-card-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: start;
+      margin-bottom: 10px;
+    }
+    .field-group { display: flex; flex-direction: column; gap: 4px; }
+    .field-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .field-input {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      padding: 6px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      width: 100%;
+      transition: border-color .15s;
+    }
+    .field-input:focus { outline: none; border-color: var(--accent); }
+    .field-input::placeholder { color: var(--muted); }
+
+    .btn-remove-leader {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      transition: all .15s;
+      margin-top: 18px;
+    }
+    .btn-remove-leader:hover { border-color: var(--red-bright); color: var(--red-bright); }
+
+    .projects-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .projects-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .proj-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .15s;
+      user-select: none;
+    }
+    .proj-chip input { display: none; }
+    .proj-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .proj-chip.selected {
+      background: rgba(88,166,255,.12);
+      border-color: rgba(88,166,255,.5);
+      color: var(--accent);
+    }
+
+    .btn-add-leader {
+      font-family: var(--font-sans);
+      font-size: 12px; font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 7px;
+      border: 1px dashed var(--border);
+      background: transparent;
+      color: var(--text-sub);
+      cursor: pointer;
+      width: 100%;
+      transition: all .15s;
+    }
+    .btn-add-leader:hover { border-color: var(--accent); color: var(--accent); }
+
+    .send-time-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+    }
+    .send-time-row label { font-size: 12px; color: var(--text-sub); }
+    .send-time-row input[type=time] {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      padding: 4px 8px;
+    }
+    .send-time-row input[type=time]:focus { outline: 1px solid var(--accent); }
+    .send-time-note { font-size: 10px; color: var(--muted); }
+
+    .btn-test {
+      font-family: var(--font-sans);
+      font-size: 12px; font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all .15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-test:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-test:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-save-leaders {
+      font-family: var(--font-sans);
+      font-size: 12px; font-weight: 600;
+      padding: 7px 18px;
+      border-radius: 6px;
+      border: none;
+      background: var(--green);
+      color: #fff;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-save-leaders:hover { background: var(--green-bright); }
+    .btn-save-leaders:disabled { opacity: .5; cursor: not-allowed; }
+
+    .save-status { font-size: 11px; color: var(--green-bright); min-width: 80px; }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      .top-band { padding: 12px 16px 10px; }
+      .kpi-row  { padding: 12px 16px 0; gap: 8px; }
+      .table-outer { padding: 12px 16px 16px; }
+      .meta-row { padding: 4px 16px 6px; }
+      .kpi-val  { font-size: 22px; }
+    }
+    @media (max-width: 680px) {
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
+      .controls { width: 100%; }
+      .threshold-wrap label { display: none; }
+      .leader-card-row { grid-template-columns: 1fr; }
+    }
+
+    /* ══════════════════════════════════════════
+       LOGIN SCREEN
+    ══════════════════════════════════════════ */
+    .login-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-overlay.hidden { display: none; }
+
+    .login-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.6);
+    }
+    .login-logo { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .login-sub  { font-size: 12px; color: var(--muted); margin-bottom: 28px; }
+    .login-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .login-field label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+    .login-field input {
+      font-family: var(--font-sans);
+      font-size: 13px; padding: 9px 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 7px; color: var(--text); transition: border-color .15s;
+    }
+    .login-field input:focus { outline: none; border-color: var(--green-bright); }
+    .login-btn {
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+      width: 100%; padding: 10px; border-radius: 7px; border: none;
+      background: var(--green); color: #fff; cursor: pointer; margin-top: 8px;
+      transition: background .15s;
+    }
+    .login-btn:hover { background: var(--green-bright); }
+    .login-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .login-error { font-size: 12px; color: var(--red-bright); margin-top: 10px; text-align: center; min-height: 18px; }
+  </style>
+</head>
+<body>
+<!-- ══ LOGIN SCREEN ══ -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">Resource Allocation</div>
+    <div class="login-sub">Namaa Consulting — Sign in to continue</div>
+    <div class="login-field">
+      <label for="loginUser">Username</label>
+      <input type="text" id="loginUser" placeholder="Enter username" autocomplete="username"/>
+    </div>
+    <div class="login-field">
+      <label for="loginPass">Password</label>
+      <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password"/>
+    </div>
+    <button class="login-btn" id="loginBtn">Sign In</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- ══ STICKY TOP BAND ══ -->
+  <div class="top-band" id="topBand">
+    <div class="header-row">
+      <div class="brand">
+        <h1>Resource Allocation</h1>
+        <p>Team time distribution across projects — Namaa Consulting</p>
+      </div>
+      <div class="controls">
+        <div class="period-tabs" id="periodTabs">
+          <button class="tab active" data-period="week">Week</button>
+          <button class="tab" data-period="month">Month</button>
+          <button class="tab" data-period="quarter">Quarter</button>
+        </div>
+        <!-- Dynamic period range badge -->
+        <span class="period-badge" id="periodBadge">—</span>
+
+        <!-- ══ WORKDAY HOURS SELECTOR ══ -->
+        <div class="workday-wrap">
+          <label>Workday</label>
+          <div class="workday-tabs" id="workdayTabs">
+            <button class="workday-tab" data-hours="6">6h</button>
+            <button class="workday-tab" data-hours="7">7h</button>
+            <button class="workday-tab active" data-hours="8">8h</button>
+          </div>
+        </div>
+
+        <div class="threshold-wrap">
+          <label for="threshInput">Overallocation Threshold</label>
+          <input type="number" id="threshInput" min="50" max="200" value="100"/>
+          <span class="pct">%</span>
+          <button class="btn-save" id="btnSave">Save</button>
+        </div>
+        <button class="btn-icon" id="btnRefresh">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+          </svg>
+          Refresh
+        </button>
+        <button class="btn-leaders" id="btnLeaders">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
+          </svg>
+          Team Leaders
+        </button>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <div class="dd" id="ddMembers">
+        <button class="dd-btn" id="btnMembers">
+          <span id="lblMembers">All Members</span>
+          <span class="caret">▼</span>
+        </button>
+        <div class="dd-panel" id="panelMembers">
+          <div class="dd-head">
+            <span class="dd-head-title">Team Members</span>
+            <span class="dd-cross-badge" id="badgeMembers">Filtered by Projects</span>
+            <button class="btn-sel-all" id="selAllMembers">Select All</button>
+          </div>
+          <input class="dd-search" id="searchMembers" type="text" placeholder="Search…"/>
+          <div class="dd-list" id="listMembers"></div>
+        </div>
+      </div>
+
+      <div class="dd" id="ddProjects">
+        <button class="dd-btn" id="btnProjects">
+          <span id="lblProjects">All Projects</span>
+          <span class="caret">▼</span>
+        </button>
+        <div class="dd-panel" id="panelProjects">
+          <div class="dd-head">
+            <span class="dd-head-title">Projects</span>
+            <span class="dd-cross-badge" id="badgeProjects">Filtered by Members</span>
+            <button class="btn-sel-all" id="selAllProjects">Select All</button>
+          </div>
+          <input class="dd-search" id="searchProjects" type="text" placeholder="Search…"/>
+          <div class="dd-list" id="listProjects"></div>
+        </div>
+      </div>
+
+      <button class="btn-clear" id="btnClear">✕ Clear All</button>
+      <div class="chips" id="chipsArea"></div>
+    </div>
+  </div>
+
+  <!-- ══ KPI ══ -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Team Members</div>
+      <div class="kpi-val neutral" id="kpiMembers">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Active Projects</div>
+      <div class="kpi-val neutral" id="kpiProjects">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Overallocated</div>
+      <div class="kpi-val red" id="kpiOver">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Avg. Utilization</div>
+      <div class="kpi-val green" id="kpiAvg">—</div>
+    </div>
+  </div>
+
+  <!-- ══ TABLE ══ -->
+  <div class="table-outer">
+    <div id="table-scroll">
+      <div class="state-box"><div class="spinner"></div><span>Loading data…</span></div>
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <span class="last-upd" id="lastUpd"></span>
+    <span class="avail-info" id="availInfo"></span>
+  </div>
+
+</div><!-- /shell -->
+
+<!-- ══════════════════════════════════════════════
+     TEAM LEADERS MODAL
+══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+
+    <div class="modal-header">
+      <div>
+        <h2>Team Leaders</h2>
+        <p>Configure who receives daily email snapshots and for which projects</p>
+      </div>
+      <button class="modal-close" id="modalClose">×</button>
+    </div>
+
+    <div class="modal-body" id="modalBody">
+      <div class="state-box"><div class="spinner"></div><span>Loading…</span></div>
+    </div>
+
+    <div class="modal-footer">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="btn-test" id="btnTestSend">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11Z"/>
+          </svg>
+          Send Test Now
+        </button>
+        <span class="save-status" id="saveStatus"></span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-clear" id="btnModalCancel">Cancel</button>
+        <button class="btn-save-leaders" id="btnSaveLeaders">Save Changes</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════ */
+const BACKEND     = 'https://resource-allocation-nine.vercel.app/api/youtrack';
+const JSONBIN_ID  = '69cb9af9aaba882197ae587e';
+const JSONBIN_KEY = '$2a$10$PqVJHBxfrnWQYY8T6puwlOZz.AoTLAFx7s.l5dNdU8bMoiS9oVxOC';
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
+const IGNORED     = ['system_user@x04x', 'Deleted User'];
+
+/* ═══════════════════════════════════════════════════
+   DATE RANGE HELPERS
+═══════════════════════════════════════════════════ */
+
+/** Format Date → 'YYYY-MM-DD' in LOCAL time (no UTC shift) */
+function toYMD(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Format date range as readable label */
+function fmtRange(start, end) {
+  const opts = { day: 'numeric', month: 'short' };
+  const s = new Date(start + 'T00:00:00').toLocaleDateString('en-GB', opts);
+  const e = new Date(end   + 'T00:00:00').toLocaleDateString('en-GB', opts);
+  return `${s} – ${e}`;
+}
+
+/**
+ * Current week: Sunday → Saturday
+ */
+function currentWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const sun = new Date(now);
+  sun.setDate(now.getDate() - day);
+  const sat = new Date(sun);
+  sat.setDate(sun.getDate() + 6);
+  return { startDate: toYMD(sun), endDate: toYMD(sat) };
+}
+
+/** Current month: 1st → last day of current month */
+function currentMonthRange() {
+  const now   = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { startDate: toYMD(first), endDate: toYMD(last) };
+}
+
+/** Current quarter */
+function currentQuarterRange() {
+  const now = new Date();
+  const m   = now.getMonth();
+  const q   = Math.floor(m / 3);
+  const first = new Date(now.getFullYear(), q * 3, 1);
+  const last  = new Date(now.getFullYear(), q * 3 + 3, 0);
+  return { startDate: toYMD(first), endDate: toYMD(last) };
+}
+
+/** Return date range for given period key */
+function getRangeForPeriod(period) {
+  if (period === 'week')    return currentWeekRange();
+  if (period === 'month')   return currentMonthRange();
+  if (period === 'quarter') return currentQuarterRange();
+  return currentWeekRange();
+}
+
+/**
+ * Working minutes available for utilization denominator.
+ * Uses the selected workday hours (6, 7, or 8).
+ * hoursPerDay × 5 days/week = weekly capacity
+ */
+function workingMinutesInRange(startDateStr, endDateStr) {
+  const start = new Date(startDateStr + 'T00:00:00');
+  const end   = new Date(endDateStr   + 'T00:00:00');
+  const msPerDay  = 86400000;
+  const totalDays = Math.round((end - start) / msPerDay) + 1;
+  const weeks = Math.ceil(totalDays / 7);
+  return weeks * workdayHours * 5 * 60; // hoursPerDay × 5 days × 60 min
+}
+
+/** Format minutes → human readable e.g. 90 → "1h 30m" */
+function fmtMins(mins) {
+  if (!mins || mins === 0) return '0h';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+/**
+ * Compute week base hours and approximate month base hours
+ * based on selected workday hours.
+ */
+function getBaseHours() {
+  const weekBase  = workdayHours * 5;            // e.g. 8×5=40, 7×5=35, 6×5=30
+  const monthBase = Math.round(workdayHours * 5 * (52 / 12)); // avg working weeks per month
+  return { weekBase, monthBase };
+}
+
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+let threshold        = 100;
+let currentPeriod    = 'week';
+let currentRange     = currentWeekRange();
+let rawData          = [];
+let allUsers         = [];
+let allProjects      = [];
+let selectedUsers    = new Set();
+let selectedProjects = new Set();
+let userProjectsMap  = {};
+let projectUsersMap  = {};
+
+// Workday hours selection: 6, 7, or 8 (default 8)
+let workdayHours = 8;
+
+let leadersConfig = [];
+let sendTime      = '08:00';
+
+/* ═══════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════ */
+const esc = s => String(s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ═══════════════════════════════════════════════════
+   WORKDAY HOURS SELECTOR
+═══════════════════════════════════════════════════ */
+document.getElementById('workdayTabs').addEventListener('click', async e => {
+  const btn = e.target.closest('.workday-tab');
+  if (!btn) return;
+  const hours = parseInt(btn.dataset.hours, 10);
+  if (hours === workdayHours) return;
+
+  workdayHours = hours;
+
+  // Update active tab UI
+  document.querySelectorAll('.workday-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Persist to JSONBin
+  try {
+    await persistConfig({ workdayHours: hours });
+  } catch (_) {}
+
+  // Re-render table and badge (data doesn't change, only calculation)
+  updatePeriodBadge();
+  renderTable();
+});
+
+/* ═══════════════════════════════════════════════════
+   CROSS-FILTER COMPUTATION
+═══════════════════════════════════════════════════ */
+function computeVisible() {
+  let visibleUsers;
+  if (selectedProjects.size === 0) {
+    visibleUsers = new Set(allUsers);
+  } else {
+    visibleUsers = new Set();
+    for (const p of selectedProjects) {
+      const users = projectUsersMap[p] || new Set();
+      for (const u of users) visibleUsers.add(u);
+    }
+  }
+
+  let visibleProjects;
+  if (selectedUsers.size === 0) {
+    visibleProjects = new Set(allProjects);
+  } else {
+    visibleProjects = new Set();
+    for (const u of selectedUsers) {
+      const projs = userProjectsMap[u] || new Set();
+      for (const p of projs) visibleProjects.add(p);
+    }
+  }
+
+  return { visibleUsers, visibleProjects };
+}
+
+function computeTableScope() {
+  const { visibleUsers, visibleProjects } = computeVisible();
+
+  const usersVis = allUsers.filter(u => {
+    const inCross  = visibleUsers.has(u);
+    const inSelect = selectedUsers.size === 0 || selectedUsers.has(u);
+    return inCross && inSelect;
+  });
+
+  const projsVis = allProjects.filter(p => {
+    const inCross  = visibleProjects.has(p);
+    const inSelect = selectedProjects.size === 0 || selectedProjects.has(p);
+    return inCross && inSelect;
+  });
+
+  return { usersVis, projsVis };
+}
+
+/* ═══════════════════════════════════════════════════
+   THRESHOLD + CONFIG — load / save
+═══════════════════════════════════════════════════ */
+async function loadConfig() {
+  try {
+    const r = await fetch(`${JSONBIN_URL}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+    const j = await r.json();
+    const rec = j?.record || {};
+
+    const v = rec.threshold;
+    if (v && !isNaN(v) && v >= 50 && v <= 200) {
+      threshold = v;
+      document.getElementById('threshInput').value = v;
+    }
+
+    // Load saved workday hours
+    const wh = rec.workdayHours;
+    if (wh && [6, 7, 8].includes(wh)) {
+      workdayHours = wh;
+      document.querySelectorAll('.workday-tab').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.hours, 10) === wh);
+      });
+    }
+
+    leadersConfig = rec.leaders  || [];
+    sendTime      = rec.sendTime || '08:00';
+  } catch {}
+}
+
+async function persistConfig(patch) {
+  const r   = await fetch(`${JSONBIN_URL}/latest`, { headers: { 'X-Master-Key': JSONBIN_KEY } });
+  const j   = await r.json();
+  const rec = Object.assign({}, j?.record || {}, patch);
+  await fetch(JSONBIN_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+    body: JSON.stringify(rec)
+  });
+}
+
+document.getElementById('btnSave').addEventListener('click', async () => {
+  const v = parseInt(document.getElementById('threshInput').value, 10);
+  if (isNaN(v) || v < 50 || v > 200) { alert('Value must be 50–200'); return; }
+  threshold = v;
+  renderTable();
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await persistConfig({ threshold: v });
+    btn.textContent = '✓ Saved';
+  } catch { btn.textContent = 'Error'; }
+  setTimeout(() => { btn.textContent = 'Save'; btn.disabled = false; }, 2000);
+});
+
+/* ═══════════════════════════════════════════════════
+   FETCH DATA
+═══════════════════════════════════════════════════ */
+async function fetchData() {
+  const scroll = document.getElementById('table-scroll');
+  scroll.innerHTML = '<div class="state-box"><div class="spinner"></div><span>Loading data…</span></div>';
+
+  currentRange = getRangeForPeriod(currentPeriod);
+  updatePeriodBadge();
+
+  const qs = `startDate=${currentRange.startDate}&endDate=${currentRange.endDate}&t=${Date.now()}`;
+
+  try {
+    const res = await fetch(`${BACKEND}?${qs}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    rawData = await res.json();
+    buildIndexes();
+    buildFilterUniverse();
+    refreshAll();
+    document.getElementById('lastUpd').textContent =
+      'Last updated: ' + new Date().toLocaleString('en-US');
+  } catch (e) {
+    scroll.innerHTML =
+      `<div class="state-box"><span class="err">❌ ${esc(e.message)}</span></div>`;
+  }
+}
+
+function updatePeriodBadge() {
+  const badge = document.getElementById('periodBadge');
+  const { weekBase, monthBase } = getBaseHours();
+  const rangeLabel = fmtRange(currentRange.startDate, currentRange.endDate);
+
+  let periodLabel = '';
+  if (currentPeriod === 'week')    periodLabel = 'Week';
+  if (currentPeriod === 'month')   periodLabel = 'Month';
+  if (currentPeriod === 'quarter') {
+    const m = new Date(currentRange.startDate + 'T00:00:00').getMonth();
+    const q = Math.floor(m / 3) + 1;
+    periodLabel = `Q${q}`;
+  }
+
+  badge.textContent = `${periodLabel}: ${rangeLabel}`;
+
+  const avail = workingMinutesInRange(currentRange.startDate, currentRange.endDate);
+  const availInfoEl = document.getElementById('availInfo');
+  availInfoEl.textContent = `Base capacity: ${workdayHours}h/day × 5d/wk = ${weekBase}h/wk · Month ≈ ${monthBase}h`;
+}
+
+function buildIndexes() {
+  userProjectsMap = {};
+  projectUsersMap = {};
+
+  for (const item of rawData) {
+    const login = item.author?.login || '';
+    const name  = item.author?.fullName || login;
+    if (!name || IGNORED.some(u => name.includes(u) || login.includes(u))) continue;
+    if ((item.duration?.minutes || 0) === 0) continue;
+
+    const proj = item.issue?.project?.name || 'Unknown';
+
+    if (!userProjectsMap[name]) userProjectsMap[name] = new Set();
+    userProjectsMap[name].add(proj);
+
+    if (!projectUsersMap[proj]) projectUsersMap[proj] = new Set();
+    projectUsersMap[proj].add(name);
+  }
+}
+
+function buildFilterUniverse() {
+  allUsers    = Object.keys(userProjectsMap).sort();
+  allProjects = Object.keys(projectUsersMap).sort();
+
+  for (const u of selectedUsers)    if (!userProjectsMap[u])    selectedUsers.delete(u);
+  for (const p of selectedProjects) if (!projectUsersMap[p]) selectedProjects.delete(p);
+}
+
+/* ═══════════════════════════════════════════════════
+   REFRESH ALL UI
+═══════════════════════════════════════════════════ */
+function refreshAll() {
+  renderDDList('users');
+  renderDDList('projects');
+  syncBtnLabels();
+  renderChips();
+  renderTable();
+}
+
+/* ═══════════════════════════════════════════════════
+   DROPDOWN LIST RENDERER
+═══════════════════════════════════════════════════ */
+function renderDDList(type) {
+  const isU    = type === 'users';
+  const items  = isU ? allUsers : allProjects;
+  const sel    = isU ? selectedUsers : selectedProjects;
+  const listEl = document.getElementById(isU ? 'listMembers' : 'listProjects');
+  const query  = (document.getElementById(isU ? 'searchMembers' : 'searchProjects').value || '').toLowerCase();
+
+  const { visibleUsers, visibleProjects } = computeVisible();
+  const inScope = isU ? visibleUsers : visibleProjects;
+
+  const badge = document.getElementById(isU ? 'badgeMembers' : 'badgeProjects');
+  const otherHasFilter = isU ? selectedProjects.size > 0 : selectedUsers.size > 0;
+  badge.classList.toggle('visible', otherHasFilter);
+
+  const shown = items.filter(i => i.toLowerCase().includes(query));
+
+  if (shown.length === 0) {
+    listEl.innerHTML = '<div class="dd-empty">No results</div>';
+    return;
+  }
+
+  listEl.innerHTML = shown.map(item => {
+    const active = inScope.has(item);
+    return `
+      <label class="dd-item${!active && otherHasFilter ? ' dimmed' : ''}">
+        <input type="checkbox" data-type="${type}" data-val="${esc(item)}"
+          ${sel.has(item) ? 'checked' : ''}/>
+        <span title="${esc(item)}">${esc(item)}</span>
+      </label>`;
+  }).join('');
+
+  listEl.querySelectorAll('input[type=checkbox]').forEach(cb =>
+    cb.addEventListener('change', () =>
+      toggleFilter(cb.dataset.type, cb.dataset.val, cb.checked)));
+}
+
+/* ═══════════════════════════════════════════════════
+   FILTER LOGIC
+═══════════════════════════════════════════════════ */
+function toggleFilter(type, value, checked) {
+  (type === 'users' ? selectedUsers : selectedProjects)[checked ? 'add' : 'delete'](value);
+  refreshAll();
+}
+
+function syncBtnLabels() {
+  const uc = selectedUsers.size, pc = selectedProjects.size;
+  document.getElementById('lblMembers').textContent  = uc ? `Members (${uc})` : 'All Members';
+  document.getElementById('lblProjects').textContent = pc ? `Projects (${pc})` : 'All Projects';
+
+  const { visibleUsers, visibleProjects } = computeVisible();
+  const scopedUsers    = allUsers.filter(u => visibleUsers.has(u));
+  const scopedProjects = allProjects.filter(p => visibleProjects.has(p));
+
+  const allUsersSelected    = scopedUsers.every(u => selectedUsers.has(u)) && scopedUsers.length > 0;
+  const allProjectsSelected = scopedProjects.every(p => selectedProjects.has(p)) && scopedProjects.length > 0;
+
+  document.getElementById('selAllMembers').textContent  = allUsersSelected    ? 'Clear All' : 'Select All';
+  document.getElementById('selAllProjects').textContent = allProjectsSelected ? 'Clear All' : 'Select All';
+}
+
+function renderChips() {
+  const area = document.getElementById('chipsArea');
+  let h = '';
+  for (const u of selectedUsers)
+    h += `<span class="chip chip-user" data-type="users" data-val="${esc(u)}">
+            <span title="${esc(u)}">${esc(u)}</span>
+            <button class="chip-x" aria-label="Remove">×</button>
+          </span>`;
+  for (const p of selectedProjects)
+    h += `<span class="chip chip-project" data-type="projects" data-val="${esc(p)}">
+            <span title="${esc(p)}">${esc(p)}</span>
+            <button class="chip-x" aria-label="Remove">×</button>
+          </span>`;
+  area.innerHTML = h;
+
+  area.querySelectorAll('.chip-x').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const chip = btn.closest('.chip');
+      toggleFilter(chip.dataset.type, chip.dataset.val, false);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   DROPDOWN UX
+═══════════════════════════════════════════════════ */
+function closeAll() {
+  ['panelMembers','panelProjects'].forEach(id => {
+    const p = document.getElementById(id);
+    p.classList.remove('open');
+    p.style.display = 'none';
+  });
+  document.getElementById('btnMembers').classList.remove('open');
+  document.getElementById('btnProjects').classList.remove('open');
+}
+
+function toggleDD(panelId, btnId, searchId) {
+  const isOpen = document.getElementById(panelId).classList.contains('open');
+  closeAll();
+  if (!isOpen) {
+    const p = document.getElementById(panelId);
+    p.style.display = 'flex';
+    p.classList.add('open');
+    document.getElementById(btnId).classList.add('open');
+    document.getElementById(searchId).focus();
+  }
+}
+
+document.getElementById('btnMembers').addEventListener('click', e => {
+  e.stopPropagation(); toggleDD('panelMembers', 'btnMembers', 'searchMembers');
+});
+document.getElementById('btnProjects').addEventListener('click', e => {
+  e.stopPropagation(); toggleDD('panelProjects', 'btnProjects', 'searchProjects');
+});
+
+['panelMembers','panelProjects'].forEach(id =>
+  document.getElementById(id).addEventListener('click', e => e.stopPropagation()));
+document.addEventListener('click', closeAll);
+
+document.getElementById('searchMembers').addEventListener('input', () => renderDDList('users'));
+document.getElementById('searchProjects').addEventListener('input', () => renderDDList('projects'));
+
+document.getElementById('selAllMembers').addEventListener('click', e => {
+  e.stopPropagation();
+  const { visibleUsers } = computeVisible();
+  const scopedUsers = allUsers.filter(u => visibleUsers.has(u));
+  const allSelected = scopedUsers.every(u => selectedUsers.has(u)) && scopedUsers.length > 0;
+  if (allSelected) { scopedUsers.forEach(u => selectedUsers.delete(u)); }
+  else             { scopedUsers.forEach(u => selectedUsers.add(u)); }
+  refreshAll();
+});
+
+document.getElementById('selAllProjects').addEventListener('click', e => {
+  e.stopPropagation();
+  const { visibleProjects } = computeVisible();
+  const scopedProjects = allProjects.filter(p => visibleProjects.has(p));
+  const allSelected = scopedProjects.every(p => selectedProjects.has(p)) && scopedProjects.length > 0;
+  if (allSelected) { scopedProjects.forEach(p => selectedProjects.delete(p)); }
+  else             { scopedProjects.forEach(p => selectedProjects.add(p)); }
+  refreshAll();
+});
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  selectedUsers.clear(); selectedProjects.clear(); refreshAll();
+});
+
+/* ═══════════════════════════════════════════════════
+   RENDER TABLE
+═══════════════════════════════════════════════════ */
+function pillClass(pct) {
+  if (pct > threshold)                        return 'pill-red';
+  if (pct >= Math.round(threshold * 0.85))    return 'pill-yellow';
+  return 'pill-green';
+}
+function totalClass(pct) {
+  if (pct > threshold)                        return 'total-red';
+  if (pct >= Math.round(threshold * 0.85))    return 'total-yellow';
+  return 'total-green';
+}
+
+function renderTable() {
+  const aggMap = {};
+  for (const item of rawData) {
+    const login = item.author?.login || '';
+    const name  = item.author?.fullName || login;
+    if (!name || IGNORED.some(u => name.includes(u) || login.includes(u))) continue;
+    const mins = item.duration?.minutes || 0;
+    if (mins === 0) continue;
+    const proj = item.issue?.project?.name || 'Unknown';
+    if (!aggMap[name]) aggMap[name] = {};
+    aggMap[name][proj] = (aggMap[name][proj] || 0) + mins;
+  }
+
+  const { usersVis, projsVis } = computeTableScope();
+
+  // Available minutes using selected workday hours
+  const avail = workingMinutesInRange(currentRange.startDate, currentRange.endDate);
+
+  const userStats = {};
+  for (const u of usersVis) {
+    let totalMins = 0;
+    const perProj = {};
+    for (const p of projsVis) {
+      const m = aggMap[u]?.[p] || 0;
+      perProj[p] = { mins: m, pct: m > 0 ? Math.round((m / avail) * 100) : null };
+      totalMins += m;
+    }
+    const totalPct = Math.round((totalMins / avail) * 100);
+    userStats[u] = { perProj, totalMins, totalPct };
+  }
+
+  // KPI
+  let overCount = 0, sumUtil = 0;
+  for (const u of usersVis) {
+    if (userStats[u].totalPct > threshold) overCount++;
+    sumUtil += userStats[u].totalPct;
+  }
+  const avgUtil = usersVis.length > 0 ? Math.round(sumUtil / usersVis.length) : 0;
+
+  document.getElementById('kpiMembers').textContent  = usersVis.length;
+  document.getElementById('kpiProjects').textContent = projsVis.length;
+  document.getElementById('kpiOver').textContent     = overCount;
+  document.getElementById('kpiAvg').textContent      = avgUtil + '%';
+
+  const scroll = document.getElementById('table-scroll');
+
+  if (usersVis.length === 0 || projsVis.length === 0) {
+    scroll.innerHTML = '<div class="state-box"><span>No results for current filters</span></div>';
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th class="th-corner">Team Member</th>`;
+  for (const p of projsVis) html += `<th>${esc(p)}</th>`;
+  html += `<th>Total</th></tr></thead><tbody>`;
+
+  for (const u of usersVis) {
+    const { perProj, totalMins, totalPct } = userStats[u];
+    const totCls = totalClass(totalPct);
+
+    html += `<tr><td class="td-name"><span class="member-name">${esc(u)}</span></td>`;
+
+    for (const p of projsVis) {
+      const { mins, pct } = perProj[p];
+      if (pct != null) {
+        const cls = pillClass(pct);
+        html += `<td>
+          <div class="pill-wrap">
+            <span class="pill ${cls}">${pct}%</span>
+            <span class="pill-hours">(${fmtMins(mins)})</span>
+          </div>
+        </td>`;
+      } else {
+        html += `<td><span class="dash">—</span></td>`;
+      }
+    }
+
+    html += `<td>
+      <div class="total-wrap">
+        <span class="total-pct ${totCls}">${totalPct}%</span>
+        <span class="total-hrs">(${fmtMins(totalMins)})</span>
+      </div>
+    </td></tr>`;
+  }
+
+  html += '</tbody></table>';
+  scroll.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════════════
+   PERIOD TABS
+═══════════════════════════════════════════════════ */
+document.getElementById('periodTabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab');
+  if (!btn) return;
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPeriod = btn.dataset.period;
+  fetchData();
+});
+
+document.getElementById('btnRefresh').addEventListener('click', fetchData);
+
+/* ═══════════════════════════════════════════════════
+   TEAM LEADERS MODAL
+═══════════════════════════════════════════════════ */
+function openModal() {
+  renderModalBody();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.getElementById('saveStatus').textContent = '';
+}
+
+document.getElementById('btnLeaders').addEventListener('click', openModal);
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('btnModalCancel').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+});
+
+function renderModalBody() {
+  const body = document.getElementById('modalBody');
+
+  let html = `
+    <div class="send-time-row">
+      <label>Daily send time:</label>
+      <input type="time" id="sendTimeInput" value="${esc(sendTime)}"/>
+      <span class="send-time-note">Cairo time (UTC+3) — cron runs at UTC${sendTimeToUTC(sendTime)}</span>
+    </div>
+    <div class="leader-list" id="leaderList">
+  `;
+
+  leadersConfig.forEach((leader, idx) => {
+    html += buildLeaderCard(leader, idx);
+  });
+
+  html += `</div>
+    <button class="btn-add-leader" id="btnAddLeader">+ Add Team Leader</button>
+  `;
+
+  body.innerHTML = html;
+
+  document.getElementById('btnAddLeader').addEventListener('click', () => {
+    leadersConfig.push({ name: '', email: '', projects: [] });
+    renderModalBody();
+  });
+
+  document.getElementById('sendTimeInput').addEventListener('change', e => {
+    sendTime = e.target.value;
+    document.querySelector('.send-time-note').textContent =
+      `Cairo time (UTC+3) — cron runs at UTC${sendTimeToUTC(sendTime)}`;
+  });
+
+  document.querySelectorAll('.leader-card').forEach(card => {
+    const idx = parseInt(card.dataset.idx);
+
+    card.querySelector('.inp-name').addEventListener('input', e => {
+      leadersConfig[idx].name = e.target.value;
+    });
+    card.querySelector('.inp-email').addEventListener('input', e => {
+      leadersConfig[idx].email = e.target.value;
+    });
+    card.querySelector('.btn-remove-leader').addEventListener('click', () => {
+      leadersConfig.splice(idx, 1);
+      renderModalBody();
+    });
+
+    card.querySelectorAll('.proj-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const proj = chip.dataset.proj;
+        const sel  = leadersConfig[idx].projects;
+        const i    = sel.indexOf(proj);
+        if (i === -1) sel.push(proj);
+        else          sel.splice(i, 1);
+        chip.classList.toggle('selected', i === -1);
+      });
+    });
+  });
+}
+
+function buildLeaderCard(leader, idx) {
+  const projChips = allProjects.map(p => {
+    const sel = leader.projects.includes(p);
+    return `<span class="proj-chip${sel ? ' selected' : ''}" data-proj="${esc(p)}">${esc(p)}</span>`;
+  }).join('');
+
+  const noProjsMsg = allProjects.length === 0
+    ? `<span style="font-size:11px;color:var(--muted);">Load dashboard data first to see projects</span>`
+    : projChips;
+
+  return `
+    <div class="leader-card" data-idx="${idx}">
+      <div class="leader-card-row">
+        <div class="field-group">
+          <span class="field-label">Full Name</span>
+          <input class="field-input inp-name" type="text" placeholder="e.g. Sara El-Masri" value="${esc(leader.name)}"/>
+        </div>
+        <div class="field-group">
+          <span class="field-label">Email Address</span>
+          <input class="field-input inp-email" type="email" placeholder="sara@namaaconsult.com" value="${esc(leader.email)}"/>
+        </div>
+        <button class="btn-remove-leader" title="Remove">×</button>
+      </div>
+      <div class="projects-label">Responsible Projects</div>
+      <div class="projects-grid">${noProjsMsg}</div>
+    </div>`;
+}
+
+function sendTimeToUTC(localTime) {
+  if (!localTime) return '';
+  const [h, m] = localTime.split(':').map(Number);
+  const utcH = ((h - 3) + 24) % 24;
+  return `${String(utcH).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+document.getElementById('btnSaveLeaders').addEventListener('click', async () => {
+  const btn    = document.getElementById('btnSaveLeaders');
+  const status = document.getElementById('saveStatus');
+
+  for (const l of leadersConfig) {
+    if (l.name && !l.email) { alert(`Missing email for ${l.name}`); return; }
+    if (l.email && !l.name) { alert('Missing name for one of the leaders'); return; }
+  }
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+  status.textContent = '';
+
+  try {
+    await persistConfig({ leaders: leadersConfig, sendTime });
+
+    await fetch('/api/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ time: sendTime })
+    });
+
+    status.textContent = '✓ Saved';
+    btn.textContent = 'Save Changes';
+    btn.disabled = false;
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  } catch (e) {
+    btn.textContent = 'Save Changes';
+    btn.disabled = false;
+    status.style.color = 'var(--red-bright)';
+    status.textContent = 'Error saving';
+  }
+});
+
+document.getElementById('btnTestSend').addEventListener('click', async () => {
+  const btn    = document.getElementById('btnTestSend');
+  const status = document.getElementById('saveStatus');
+  btn.disabled = true;
+  status.textContent = 'Sending…';
+  status.style.color = 'var(--muted)';
+
+  try {
+    const res  = await fetch('/api/send-email', { method: 'POST' });
+    const json = await res.json();
+    if (res.ok) {
+      status.style.color = 'var(--green-bright)';
+      status.textContent = `✓ Sent to ${json.sent} leader(s)`;
+    } else {
+      throw new Error(json.error || 'Unknown error');
+    }
+  } catch (e) {
+    status.style.color = 'var(--red-bright)';
+    status.textContent = `❌ ${e.message}`;
+  }
+
+  btn.disabled = false;
+  setTimeout(() => { status.textContent = ''; }, 5000);
+});
+
+/* ═══════════════════════════════════════════════════
+   LOGIN
+═══════════════════════════════════════════════════ */
+function getToken() {
+  return sessionStorage.getItem('auth_token');
+}
+
+function checkAuth() {
+  return !!getToken();
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const btn      = document.getElementById('loginBtn');
+  const errEl    = document.getElementById('loginError');
+
+  if (!username || !password) {
+    errEl.textContent = 'Please enter username and password';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+  errEl.textContent = '';
+
+  try {
+    const res  = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const json = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = 'Invalid username or password';
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
+    }
+
+    sessionStorage.setItem('auth_token', json.token);
+    document.getElementById('loginOverlay').classList.add('hidden');
+    await loadConfig();
+    await fetchData();
+
+  } catch (e) {
+    errEl.textContent = 'Connection error, please try again';
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+}
+
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('loginPass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('loginUser').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('loginPass').focus();
+});
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+(async () => {
+  if (checkAuth()) {
+    document.getElementById('loginOverlay').classList.add('hidden');
+    await loadConfig();
+    await fetchData();
+  }
+})();
+</script>
+</body>
+</html>
